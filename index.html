@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Pace Note Protractor - Rally Recce v1.4</title>
+  <title>Pace Note Protractor - Rally Recce v1.5</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -114,12 +114,12 @@
           <line x1="50" y1="50" x2="50" y2="90" stroke="currentColor" stroke-width="3" class="text-slate-400"/>
         </svg>
 
-        <div class="z-10 text-center flex flex-col items-center justify-center pointer-events-none">
+        <div class="z-10 text-center flex flex-col items-center justify-center pointer-events-none px-2">
           <div class="flex items-center justify-center space-x-2">
             <span id="turnDirectionIcon" class="text-3xl text-slate-500 transition-colors">
               <i class="fa-solid fa-minus"></i>
             </span>
-            <span id="gradeLabel" class="text-5xl sm:text-6xl font-black tracking-wider uppercase text-emerald-400 drop-shadow-md transition-colors">
+            <span id="gradeLabel" class="text-4xl sm:text-5xl font-black tracking-wider uppercase text-emerald-400 drop-shadow-md transition-colors leading-none">
               STRAIGHT
             </span>
           </div>
@@ -175,8 +175,8 @@
           <button data-system="6-1" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
             6 to 1 (Jemba)
           </button>
-          <button data-system="descriptive" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
-            Descriptive
+          <button data-system="traditional" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
+            Old School (Fast/Easy/K)
           </button>
         </div>
       </div>
@@ -274,13 +274,12 @@
             { name: '5', maxDeg: 165, color: '#facc15', code: '5', speak: '5' },
             { name: '6', maxDeg: 999, color: '#34d399', code: '6', speak: '6' }
           ],
-          descriptive: [
+          traditional: [
             { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
-            { name: 'GENTLE', maxDeg: 35, color: '#34d399', code: 'GENTLE', speak: 'Gentle' },
-            { name: 'FLOWING', maxDeg: 60, color: '#facc15', code: 'FLOWING', speak: 'Flowing' },
-            { name: 'FAST', maxDeg: 95, color: '#fbbf24', code: 'FAST', speak: 'Fast' },
-            { name: 'TIGHT', maxDeg: 130, color: '#fb923c', code: 'TIGHT', speak: 'Tight' },
-            { name: 'VERY TIGHT', maxDeg: 165, color: '#f87171', code: 'VERY TIGHT', speak: 'Very Tight' },
+            { name: 'FAST', maxDeg: 35, color: '#34d399', code: 'FAST', speak: 'Fast' },
+            { name: 'MEDIUM', maxDeg: 60, color: '#facc15', code: 'MEDIUM', speak: 'Medium' },
+            { name: 'EASY', maxDeg: 95, color: '#fbbf24', code: 'EASY', speak: 'Easy' },
+            { name: 'K', maxDeg: 130, color: '#fb923c', code: 'K', speak: '90' },
             { name: 'HAIRPIN', maxDeg: 999, color: '#ef4444', code: 'HAIRPIN', speak: 'Hairpin' }
           ]
         }
@@ -481,7 +480,6 @@
             if (dY) dY.innerText = state.rawY.toFixed(2);
             if (dZ) dZ.innerText = state.rawZ.toFixed(2);
 
-            // Full signed 360° calculation (allows rotation past 90° into tight R3/R2/R1 corners)
             let angle = Math.atan2(state.rawX, state.rawY) * (180 / Math.PI);
             processAngle(angle);
           }
@@ -515,7 +513,6 @@
         showToast('Motion sensors activated (360° Mode)');
       }
 
-      // Pointer/Drag fallback controls
       let isDragging = false;
       let startAngle = 0;
 
@@ -540,7 +537,6 @@
 
       window.addEventListener('pointerup', () => isDragging = false);
 
-      // DOM Event Listeners
       if (elements.enableSensorsBtn) elements.enableSensorsBtn.addEventListener('click', enableSensors);
 
       const zeroBtn = document.getElementById('zeroCalibrateBtn');
@@ -571,15 +567,29 @@
       const sysToggle = document.getElementById('systemToggleBtn');
       if (sysToggle) {
         sysToggle.addEventListener('click', () => {
-          const sys = state.system === '1-6' ? '6-1' : state.system === '6-1' ? 'descriptive' : '1-6';
+          const sys = state.system === '1-6' ? '6-1' : state.system === '6-1' ? 'traditional' : '1-6';
           state.system = sys;
           if (elements.systemNameLabel) {
-            elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Desc';
+            elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Old School';
           }
-          showToast(`System: ${sys.toUpperCase()}`);
+          showToast(`System: ${sys === 'traditional' ? 'Old School' : sys.toUpperCase()}`);
           updateUI();
         });
       }
+
+      document.querySelectorAll('.system-select-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const sys = e.target.getAttribute('data-system');
+          if (sys) {
+            state.system = sys;
+            if (elements.systemNameLabel) {
+              elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Old School';
+            }
+            showToast(`System: ${sys === 'traditional' ? 'Old School' : sys.toUpperCase()}`);
+            updateUI();
+          }
+        });
+      });
 
       const diagBtn = document.getElementById('sensorDiagBtn');
       if (diagBtn && elements.diagHUD) {
@@ -635,7 +645,6 @@
         });
       }
 
-      // Initialize Application
       initTicks();
       updateUI();
     });
