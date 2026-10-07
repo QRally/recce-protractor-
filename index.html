@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Pace Note Protractor - Rally Recce</title>
+  <title>Pace Note Protractor - Rally Recce v1.4</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -466,7 +466,7 @@
         const motionHandler = (evt) => {
           state.activeSensorSource = 'DeviceMotion';
           const diagSrc = document.getElementById('diagSource');
-          if (diagSrc) diagSrc.innerText = 'Gravity Vector';
+          if (diagSrc) diagSrc.innerText = 'Gravity 360°';
           
           const acc = evt.accelerationIncludingGravity;
           if (acc) {
@@ -481,8 +481,8 @@
             if (dY) dY.innerText = state.rawY.toFixed(2);
             if (dZ) dZ.innerText = state.rawZ.toFixed(2);
 
-            const projectedY = Math.sqrt(state.rawY * state.rawY + state.rawZ * state.rawZ);
-            let angle = Math.atan2(state.rawX, projectedY) * (180 / Math.PI);
+            // Full signed 360° calculation (allows rotation past 90° into tight R3/R2/R1 corners)
+            let angle = Math.atan2(state.rawX, state.rawY) * (180 / Math.PI);
             processAngle(angle);
           }
         };
@@ -512,10 +512,10 @@
           const label = elements.enableSensorsBtn.querySelector('span');
           if (label) label.innerText = 'Sensors Connected';
         }
-        showToast('Motion sensors activated');
+        showToast('Motion sensors activated (360° Mode)');
       }
 
-      // Drag controls fallback
+      // Pointer/Drag fallback controls
       let isDragging = false;
       let startAngle = 0;
 
@@ -540,7 +540,7 @@
 
       window.addEventListener('pointerup', () => isDragging = false);
 
-      // Event Listeners with Safe Guards
+      // DOM Event Listeners
       if (elements.enableSensorsBtn) elements.enableSensorsBtn.addEventListener('click', enableSensors);
 
       const zeroBtn = document.getElementById('zeroCalibrateBtn');
@@ -635,7 +635,7 @@
         });
       }
 
-      // Initialize
+      // Initialize Application
       initTicks();
       updateUI();
     });
