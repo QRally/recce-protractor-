@@ -304,5 +304,341 @@
       const synth = window.speechSynthesis;
 
       function initTicks() {
-        const canvas = document.getElementById
+        const canvas = document.getElementById('ticksCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const size = 300;
+        canvas.width = size;
+        canvas.height = size;
+        const center = size / 2;
+        const radius = center - 12;
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.strokeStyle = '#334155';
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        for (let a = -180; a < 180; a += 15) {
+          const rad = (a - 90) * (Math.PI / 180);
+          const isMajor = a % 45 === 0;
+          const tickLen = isMajor ? 10 : 5;
+
+          const x1 = center + Math.cos(rad) * radius;
+          const y1 = center + Math.sin(rad) * radius;
+          const x2 = center + Math.cos(rad) * (radius - tickLen);
+          const y2 = center + Math.sin(rad) * (radius - tickLen);
+
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.lineWidth = isMajor ? 2 : 1;
+          ctx.stroke();
+
+          if (isMajor && a !== -180) {
+            const tx = center + Math.cos(rad) * (radius - 18);
+            const ty = center + Math.sin(rad) * (radius - 18);
+            ctx.fillText(`${Math.abs(a)}°`, tx, ty);
+          }
+        }
+      }
+
+      function showToast(msg) {
+        if (!elements.toast || !elements.toastMessage) return;
+        elements.toastMessage.innerText = msg;
+        elements.toast.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => elements.toast.classList.add('opacity-0', 'pointer-events-none'), 2500);
+      }
+
+      function processAngle(targetAngle) {
+        state.rawAngle = state.invertSensor ? -targetAngle : targetAngle;
+        state.filteredAngle = state.filteredAngle + state.smoothing * (state.rawAngle - state.filteredAngle);
         
+        let calcAngle = Math.round(state.filteredAngle - state.zeroOffset);
+        if (calcAngle > 180) calcAngle -= 360;
+        if (calcAngle < -180) calcAngle += 360;
+
+        state.currentAngle = calcAngle;
+        updateUI();
+      }
+
+      function updateUI() {
+        const angle = state.currentAngle;
+        const absAngle = Math.abs(angle);
+        const isRight = angle > 2;
+        const isLeft = angle < -2;
+        const dirPrefix = isRight ? 'R' : isLeft ? 'L' : '';
+
+        if (elements.steeringWheel) {
+          elements.steeringWheel.style.transform = `rotate(${angle}deg)`;
+        }
+
+        if (elements.turnDirectionIcon) {
+          if (isRight) {
+            elements.turnDirectionIcon.className = 'text-3xl text-blue-400 transition-colors';
+            elements.turnDirectionIcon.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
+          } else if (isLeft) {
+            elements.turnDirectionIcon.className = 'text-3xl text-blue-400 transition-colors';
+            elements.turnDirectionIcon.innerHTML = '<i class="fa-solid fa-arrow-left"></i>';
+          } else {
+            elements.turnDirectionIcon.className = 'text-3xl text-slate-500 transition-colors';
+            elements.turnDirectionIcon.innerHTML = '<i class="fa-solid fa-minus"></i>';
+          }
+        }
+
+        const activeList = state.thresholds[state.system];
+        let matchedGrade = activeList[activeList.length - 1];
+
+        for (let i = 0; i < activeList.length; i++) {
+          if (absAngle <= activeList[i].maxDeg) {
+            matchedGrade = activeList[i];
+            break;
+          }
+        }
+
+        const cleanGradeDisplay = matchedGrade.code === 'STRAIGHT' ? 'STRAIGHT' : `${dirPrefix}${matchedGrade.code}`;
+        if (elements.gradeLabel) {
+          elements.gradeLabel.innerText = cleanGradeDisplay;
+          elements.gradeLabel.style.color = matchedGrade.color;
+        }
+
+        if (state.audioEnabled && cleanGradeDisplay !== 'STRAIGHT' && state.lastGradeCalled !== cleanGradeDisplay) {
+          const spokenDir = isRight ? 'Right' : 'Left';
+          speakCall(`${spokenDir} ${matchedGrade.speak}`);
+          state.lastGradeCalled = cleanGradeDisplay;
+          logCorner(spokenDir.toUpperCase(), matchedGrade.code, absAngle);
+        } else if (cleanGradeDisplay === 'STRAIGHT') {
+          state.lastGradeCalled = null;
+        }
+      }
+
+      function speakCall(text) {
+        if (!synth) return;
+        synth.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.rate = state.speechRate;
+        synth.speak(utter);
+      }
+
+      function logCorner(dir, grade, deg) {
+        const item = { time: new Date().toLocaleTimeString(), dir, grade, deg };
+        state.cornerLogs.unshift(item);
+        if (elements.logCount) elements.logCount.innerText = state.cornerLogs.length;
+        renderLogs();
+      }
+
+      function renderLogs() {
+        if (!elements.logListContainer) return;
+        if (state.cornerLogs.length === 0) {
+          elements.logListContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No corners logged yet. Turn the wheel on recce!</p>`;
+          return;
+        }
+        elements.logListContainer.innerHTML = state.cornerLogs.map(l => `
+          <div class="flex items-center justify-between bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/60 text-xs">
+            <span class="font-mono text-slate-400">${l.time}</span>
+            <span class="font-bold text-white">${l.dir} ${l.grade}</span>
+            <span class="font-mono text-blue-400">${l.deg}°</span>
+          </div>
+        `).join('');
+      }
+
+      function enableSensors() {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+          DeviceMotionEvent.requestPermission().then(res => {
+            if (res === 'granted') {
+              attachSensorListeners();
+            } else {
+              showToast('Sensor permission denied');
+            }
+          }).catch(err => {
+            console.error(err);
+            attachSensorListeners();
+          });
+        } else {
+          attachSensorListeners();
+        }
+      }
+
+      function attachSensorListeners() {
+        const motionHandler = (evt) => {
+          state.activeSensorSource = 'DeviceMotion';
+          const diagSrc = document.getElementById('diagSource');
+          if (diagSrc) diagSrc.innerText = 'Gravity Vector';
+          
+          const acc = evt.accelerationIncludingGravity;
+          if (acc) {
+            state.rawX = -(acc.x || 0); 
+            state.rawY = acc.y || 0;
+            state.rawZ = acc.z || 0;
+
+            const dX = document.getElementById('diagX');
+            const dY = document.getElementById('diagY');
+            const dZ = document.getElementById('diagZ');
+            if (dX) dX.innerText = state.rawX.toFixed(2);
+            if (dY) dY.innerText = state.rawY.toFixed(2);
+            if (dZ) dZ.innerText = state.rawZ.toFixed(2);
+
+            const projectedY = Math.sqrt(state.rawY * state.rawY + state.rawZ * state.rawZ);
+            let angle = Math.atan2(state.rawX, projectedY) * (180 / Math.PI);
+            processAngle(angle);
+          }
+        };
+
+        const orientHandler = (evt) => {
+          state.rawGamma = evt.gamma || 0;
+          state.rawBeta = evt.beta || 0;
+          const dG = document.getElementById('diagGamma');
+          const dB = document.getElementById('diagBeta');
+          if (dG) dG.innerText = state.rawGamma.toFixed(1) + '°';
+          if (dB) dB.innerText = state.rawBeta.toFixed(1) + '°';
+        };
+
+        window.addEventListener('devicemotion', motionHandler, true);
+        window.addEventListener('deviceorientation', orientHandler, true);
+
+        state.sensorsActive = true;
+        const dStat = document.getElementById('diagStatus');
+        if (dStat) {
+          dStat.innerText = 'Active';
+          dStat.className = 'text-emerald-400 font-semibold';
+        }
+        
+        if (elements.enableSensorsBtn) {
+          elements.enableSensorsBtn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+          elements.enableSensorsBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+          const label = elements.enableSensorsBtn.querySelector('span');
+          if (label) label.innerText = 'Sensors Connected';
+        }
+        showToast('Motion sensors activated');
+      }
+
+      // Drag controls fallback
+      let isDragging = false;
+      let startAngle = 0;
+
+      if (elements.steeringWheel) {
+        elements.steeringWheel.addEventListener('pointerdown', (e) => {
+          isDragging = true;
+          const rect = elements.steeringWheel.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI) - state.currentAngle;
+        });
+      }
+
+      window.addEventListener('pointermove', (e) => {
+        if (!isDragging || !elements.steeringWheel) return;
+        const rect = elements.steeringWheel.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        let angle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI) - startAngle;
+        processAngle(angle);
+      });
+
+      window.addEventListener('pointerup', () => isDragging = false);
+
+      // Event Listeners with Safe Guards
+      if (elements.enableSensorsBtn) elements.enableSensorsBtn.addEventListener('click', enableSensors);
+
+      const zeroBtn = document.getElementById('zeroCalibrateBtn');
+      if (zeroBtn) {
+        zeroBtn.addEventListener('click', () => {
+          state.zeroOffset = state.filteredAngle;
+          showToast('Calibrated to Zero Baseline');
+        });
+      }
+
+      const audioBtn = document.getElementById('toggleAudioBtn');
+      if (audioBtn) {
+        audioBtn.addEventListener('click', () => {
+          state.audioEnabled = !state.audioEnabled;
+          const btnText = document.getElementById('audioStatusText');
+          const icon = document.getElementById('audioIcon');
+          if (state.audioEnabled) {
+            if (btnText) btnText.innerText = 'Callouts: ON';
+            if (icon) icon.className = 'fa-solid fa-volume-high text-emerald-400';
+            speakCall('Audio On');
+          } else {
+            if (btnText) btnText.innerText = 'Callouts: OFF';
+            if (icon) icon.className = 'fa-solid fa-volume-xmark text-slate-400';
+          }
+        });
+      }
+
+      const sysToggle = document.getElementById('systemToggleBtn');
+      if (sysToggle) {
+        sysToggle.addEventListener('click', () => {
+          const sys = state.system === '1-6' ? '6-1' : state.system === '6-1' ? 'descriptive' : '1-6';
+          state.system = sys;
+          if (elements.systemNameLabel) {
+            elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Desc';
+          }
+          showToast(`System: ${sys.toUpperCase()}`);
+          updateUI();
+        });
+      }
+
+      const diagBtn = document.getElementById('sensorDiagBtn');
+      if (diagBtn && elements.diagHUD) {
+        diagBtn.addEventListener('click', () => elements.diagHUD.classList.toggle('hidden'));
+      }
+
+      const settingsBtn = document.getElementById('settingsBtn');
+      if (settingsBtn && elements.settingsModal) {
+        settingsBtn.addEventListener('click', () => elements.settingsModal.classList.remove('opacity-0', 'pointer-events-none'));
+      }
+
+      const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+      if (closeSettingsBtn && elements.settingsModal) {
+        closeSettingsBtn.addEventListener('click', () => elements.settingsModal.classList.add('opacity-0', 'pointer-events-none'));
+      }
+
+      const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+      if (saveSettingsBtn && elements.settingsModal) {
+        saveSettingsBtn.addEventListener('click', () => elements.settingsModal.classList.add('opacity-0', 'pointer-events-none'));
+      }
+
+      const invertCheck = document.getElementById('invertSensorCheck');
+      if (invertCheck) {
+        invertCheck.addEventListener('change', (e) => { state.invertSensor = e.target.checked; });
+      }
+
+      const viewLogsBtn = document.getElementById('viewLogsBtn');
+      if (viewLogsBtn && elements.logsModal) {
+        viewLogsBtn.addEventListener('click', () => elements.logsModal.classList.remove('opacity-0', 'pointer-events-none'));
+      }
+
+      const closeLogsBtn = document.getElementById('closeLogsBtn');
+      if (closeLogsBtn && elements.logsModal) {
+        closeLogsBtn.addEventListener('click', () => elements.logsModal.classList.add('opacity-0', 'pointer-events-none'));
+      }
+
+      const clearLogsBtn = document.getElementById('clearLogsBtn');
+      if (clearLogsBtn) {
+        clearLogsBtn.addEventListener('click', () => {
+          state.cornerLogs = [];
+          if (elements.logCount) elements.logCount.innerText = '0';
+          renderLogs();
+          showToast('Logs Cleared');
+        });
+      }
+
+      const exportLogsBtn = document.getElementById('exportLogsBtn');
+      if (exportLogsBtn) {
+        exportLogsBtn.addEventListener('click', () => {
+          const text = state.cornerLogs.map(l => `${l.time} - ${l.dir} ${l.grade} (${l.deg}°)`).join('\n');
+          navigator.clipboard.writeText(text);
+          showToast('Copied to Clipboard!');
+        });
+      }
+
+      // Initialize
+      initTicks();
+      updateUI();
+    });
+  </script>
+</body>
+</html>
