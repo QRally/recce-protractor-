@@ -235,284 +235,74 @@
   </div>
 
   <script>
-    const state = {
-      rawAngle: 0,
-      filteredAngle: 0,
-      zeroOffset: 0,
-      currentAngle: 0,
+    document.addEventListener('DOMContentLoaded', () => {
+      const state = {
+        rawAngle: 0,
+        filteredAngle: 0,
+        zeroOffset: 0,
+        currentAngle: 0,
 
-      system: '1-6',
-      smoothing: 0.20,
-      audioEnabled: false,
-      speechRate: 1.2,
-      sensorsActive: false,
-      invertSensor: false,
+        system: '1-6',
+        smoothing: 0.20,
+        audioEnabled: false,
+        speechRate: 1.2,
+        sensorsActive: false,
+        invertSensor: false,
 
-      rawX: 0, rawY: 0, rawZ: 0, rawGamma: 0, rawBeta: 0,
-      activeSensorSource: 'None',
-      lastGradeCalled: null,
+        rawX: 0, rawY: 0, rawZ: 0, rawGamma: 0, rawBeta: 0,
+        activeSensorSource: 'None',
+        lastGradeCalled: null,
 
-      cornerLogs: [],
+        cornerLogs: [],
 
-      thresholds: {
-        '1-6': [
-          { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
-          { name: '6', maxDeg: 35, color: '#34d399', code: '6', speak: '6' },
-          { name: '5', maxDeg: 60, color: '#facc15', code: '5', speak: '5' },
-          { name: '4', maxDeg: 95, color: '#fbbf24', code: '4', speak: '4' },
-          { name: '3', maxDeg: 130, color: '#fb923c', code: '3', speak: '3' },
-          { name: '2', maxDeg: 165, color: '#f87171', code: '2', speak: '2' },
-          { name: '1', maxDeg: 999, color: '#ef4444', code: '1', speak: '1' }
-        ],
-        '6-1': [
-          { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
-          { name: '1', maxDeg: 35, color: '#ef4444', code: '1', speak: '1' },
-          { name: '2', maxDeg: 60, color: '#f87171', code: '2', speak: '2' },
-          { name: '3', maxDeg: 95, color: '#fb923c', code: '3', speak: '3' },
-          { name: '4', maxDeg: 130, color: '#fbbf24', code: '4', speak: '4' },
-          { name: '5', maxDeg: 165, color: '#facc15', code: '5', speak: '5' },
-          { name: '6', maxDeg: 999, color: '#34d399', code: '6', speak: '6' }
-        ],
-        descriptive: [
-          { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
-          { name: 'GENTLE', maxDeg: 35, color: '#34d399', code: 'GENTLE', speak: 'Gentle' },
-          { name: 'FLOWING', maxDeg: 60, color: '#facc15', code: 'FLOWING', speak: 'Flowing' },
-          { name: 'FAST', maxDeg: 95, color: '#fbbf24', code: 'FAST', speak: 'Fast' },
-          { name: 'TIGHT', maxDeg: 130, color: '#fb923c', code: 'TIGHT', speak: 'Tight' },
-          { name: 'VERY TIGHT', maxDeg: 165, color: '#f87171', code: 'VERY TIGHT', speak: 'Very Tight' },
-          { name: 'HAIRPIN', maxDeg: 999, color: '#ef4444', code: 'HAIRPIN', speak: 'Hairpin' }
-        ]
-      }
-    };
-
-    const elements = {
-      turnDirectionIcon: document.getElementById('turnDirectionIcon'),
-      gradeLabel: document.getElementById('gradeLabel'),
-      steeringWheel: document.getElementById('steeringWheel'),
-      systemNameLabel: document.getElementById('systemNameLabel'),
-      settingsModal: document.getElementById('settingsModal'),
-      logsModal: document.getElementById('logsModal'),
-      diagHUD: document.getElementById('diagHUD'),
-      enableSensorsBtn: document.getElementById('enableSensorsBtn'),
-      logCount: document.getElementById('logCount'),
-      logListContainer: document.getElementById('logListContainer'),
-      toast: document.getElementById('toast'),
-      toastMessage: document.getElementById('toastMessage')
-    };
-
-    const synth = window.speechSynthesis;
-
-    function initTicks() {
-      const canvas = document.getElementById('ticksCanvas');
-      const ctx = canvas.getContext('2d');
-      const size = 300;
-      canvas.width = size;
-      canvas.height = size;
-      const center = size / 2;
-      const radius = center - 12;
-
-      ctx.clearRect(0, 0, size, size);
-      ctx.strokeStyle = '#334155';
-      ctx.fillStyle = '#64748b';
-      ctx.font = '10px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      for (let a = -180; a < 180; a += 15) {
-        const rad = (a - 90) * (Math.PI / 180);
-        const isMajor = a % 45 === 0;
-        const tickLen = isMajor ? 10 : 5;
-
-        const x1 = center + Math.cos(rad) * radius;
-        const y1 = center + Math.sin(rad) * radius;
-        const x2 = center + Math.cos(rad) * (radius - tickLen);
-        const y2 = center + Math.sin(rad) * (radius - tickLen);
-
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.lineWidth = isMajor ? 2 : 1;
-        ctx.stroke();
-
-        if (isMajor && a !== -180) {
-          const tx = center + Math.cos(rad) * (radius - 18);
-          const ty = center + Math.sin(rad) * (radius - 18);
-          ctx.fillText(`${Math.abs(a)}°`, tx, ty);
+        thresholds: {
+          '1-6': [
+            { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
+            { name: '6', maxDeg: 35, color: '#34d399', code: '6', speak: '6' },
+            { name: '5', maxDeg: 60, color: '#facc15', code: '5', speak: '5' },
+            { name: '4', maxDeg: 95, color: '#fbbf24', code: '4', speak: '4' },
+            { name: '3', maxDeg: 130, color: '#fb923c', code: '3', speak: '3' },
+            { name: '2', maxDeg: 165, color: '#f87171', code: '2', speak: '2' },
+            { name: '1', maxDeg: 999, color: '#ef4444', code: '1', speak: '1' }
+          ],
+          '6-1': [
+            { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
+            { name: '1', maxDeg: 35, color: '#ef4444', code: '1', speak: '1' },
+            { name: '2', maxDeg: 60, color: '#f87171', code: '2', speak: '2' },
+            { name: '3', maxDeg: 95, color: '#fb923c', code: '3', speak: '3' },
+            { name: '4', maxDeg: 130, color: '#fbbf24', code: '4', speak: '4' },
+            { name: '5', maxDeg: 165, color: '#facc15', code: '5', speak: '5' },
+            { name: '6', maxDeg: 999, color: '#34d399', code: '6', speak: '6' }
+          ],
+          descriptive: [
+            { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
+            { name: 'GENTLE', maxDeg: 35, color: '#34d399', code: 'GENTLE', speak: 'Gentle' },
+            { name: 'FLOWING', maxDeg: 60, color: '#facc15', code: 'FLOWING', speak: 'Flowing' },
+            { name: 'FAST', maxDeg: 95, color: '#fbbf24', code: 'FAST', speak: 'Fast' },
+            { name: 'TIGHT', maxDeg: 130, color: '#fb923c', code: 'TIGHT', speak: 'Tight' },
+            { name: 'VERY TIGHT', maxDeg: 165, color: '#f87171', code: 'VERY TIGHT', speak: 'Very Tight' },
+            { name: 'HAIRPIN', maxDeg: 999, color: '#ef4444', code: 'HAIRPIN', speak: 'Hairpin' }
+          ]
         }
-      }
-    }
+      };
 
-    function showToast(msg) {
-      elements.toastMessage.innerText = msg;
-      elements.toast.classList.remove('opacity-0', 'pointer-events-none');
-      setTimeout(() => elements.toast.classList.add('opacity-0', 'pointer-events-none'), 2500);
-    }
+      const elements = {
+        turnDirectionIcon: document.getElementById('turnDirectionIcon'),
+        gradeLabel: document.getElementById('gradeLabel'),
+        steeringWheel: document.getElementById('steeringWheel'),
+        systemNameLabel: document.getElementById('systemNameLabel'),
+        settingsModal: document.getElementById('settingsModal'),
+        logsModal: document.getElementById('logsModal'),
+        diagHUD: document.getElementById('diagHUD'),
+        enableSensorsBtn: document.getElementById('enableSensorsBtn'),
+        logCount: document.getElementById('logCount'),
+        logListContainer: document.getElementById('logListContainer'),
+        toast: document.getElementById('toast'),
+        toastMessage: document.getElementById('toastMessage')
+      };
 
-    function processAngle(targetAngle) {
-      state.rawAngle = state.invertSensor ? -targetAngle : targetAngle;
-      state.filteredAngle = state.filteredAngle + state.smoothing * (state.rawAngle - state.filteredAngle);
-      
-      let calcAngle = Math.round(state.filteredAngle - state.zeroOffset);
-      if (calcAngle > 180) calcAngle -= 360;
-      if (calcAngle < -180) calcAngle += 360;
+      const synth = window.speechSynthesis;
 
-      state.currentAngle = calcAngle;
-      updateUI();
-    }
-
-    function updateUI() {
-      const angle = state.currentAngle;
-      const absAngle = Math.abs(angle);
-      const isRight = angle > 2;
-      const isLeft = angle < -2;
-      const dirPrefix = isRight ? 'R' : isLeft ? 'L' : '';
-
-      elements.steeringWheel.style.transform = `rotate(${angle}deg)`;
-
-      if (isRight) {
-        elements.turnDirectionIcon.className = 'text-3xl text-blue-400 transition-colors';
-        elements.turnDirectionIcon.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
-      } else if (isLeft) {
-        elements.turnDirectionIcon.className = 'text-3xl text-blue-400 transition-colors';
-        elements.turnDirectionIcon.innerHTML = '<i class="fa-solid fa-arrow-left"></i>';
-      } else {
-        elements.turnDirectionIcon.className = 'text-3xl text-slate-500 transition-colors';
-        elements.turnDirectionIcon.innerHTML = '<i class="fa-solid fa-minus"></i>';
-      }
-
-      const activeList = state.thresholds[state.system];
-      let matchedGrade = activeList[activeList.length - 1];
-
-      for (let i = 0; i < activeList.length; i++) {
-        if (absAngle <= activeList[i].maxDeg) {
-          matchedGrade = activeList[i];
-          break;
-        }
-      }
-
-      const cleanGradeDisplay = matchedGrade.code === 'STRAIGHT' ? 'STRAIGHT' : `${dirPrefix}${matchedGrade.code}`;
-      elements.gradeLabel.innerText = cleanGradeDisplay;
-      elements.gradeLabel.style.color = matchedGrade.color;
-
-      if (state.audioEnabled && cleanGradeDisplay !== 'STRAIGHT' && state.lastGradeCalled !== cleanGradeDisplay) {
-        const spokenDir = isRight ? 'Right' : 'Left';
-        speakCall(`${spokenDir} ${matchedGrade.speak}`);
-        state.lastGradeCalled = cleanGradeDisplay;
-        logCorner(spokenDir.toUpperCase(), matchedGrade.code, absAngle);
-      } else if (cleanGradeDisplay === 'STRAIGHT') {
-        state.lastGradeCalled = null;
-      }
-    }
-
-    function speakCall(text) {
-      if (!synth) return;
-      synth.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = state.speechRate;
-      synth.speak(utter);
-    }
-
-    function logCorner(dir, grade, deg) {
-      const item = { time: new Date().toLocaleTimeString(), dir, grade, deg };
-      state.cornerLogs.unshift(item);
-      elements.logCount.innerText = state.cornerLogs.length;
-      renderLogs();
-    }
-
-    function renderLogs() {
-      if (state.cornerLogs.length === 0) {
-        elements.logListContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No corners logged yet. Turn the wheel on recce!</p>`;
-        return;
-      }
-      elements.logListContainer.innerHTML = state.cornerLogs.map(l => `
-        <div class="flex items-center justify-between bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/60 text-xs">
-          <span class="font-mono text-slate-400">${l.time}</span>
-          <span class="font-bold text-white">${l.dir} ${l.grade}</span>
-          <span class="font-mono text-blue-400">${l.deg}°</span>
-        </div>
-      `).join('');
-    }
-
-    function enableSensors() {
-      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-        DeviceMotionEvent.requestPermission().then(res => {
-          if (res === 'granted') attachSensorListeners();
-          else showToast('Sensor permission denied.');
-        }).catch(console.error);
-      } else {
-        attachSensorListeners();
-      }
-    }
-
-    function attachSensorListeners() {
-      window.addEventListener('devicemotion', (evt) => {
-        state.activeSensorSource = 'DeviceMotion';
-        document.getElementById('diagSource').innerText = 'Gravity Vector (Compensated)';
-        const acc = evt.accelerationIncludingGravity;
-        if (acc) {
-          state.rawX = -(acc.x || 0); 
-          state.rawY = acc.y || 0;
-          state.rawZ = acc.z || 0;
-
-          document.getElementById('diagX').innerText = state.rawX.toFixed(2);
-          document.getElementById('diagY').innerText = state.rawY.toFixed(2);
-          document.getElementById('diagZ').innerText = state.rawZ.toFixed(2);
-
-          const projectedY = Math.sqrt(state.rawY * state.rawY + state.rawZ * state.rawZ);
-          let angle = Math.atan2(state.rawX, projectedY) * (180 / Math.PI);
-          processAngle(angle);
-        }
-      });
-
-      window.addEventListener('deviceorientation', (evt) => {
-        state.rawGamma = evt.gamma || 0;
-        state.rawBeta = evt.beta || 0;
-        document.getElementById('diagGamma').innerText = state.rawGamma.toFixed(1) + '°';
-        document.getElementById('diagBeta').innerText = state.rawBeta.toFixed(1) + '°';
-      });
-
-      state.sensorsActive = true;
-      document.getElementById('diagStatus').innerText = 'Active';
-      document.getElementById('diagStatus').className = 'text-emerald-400 font-semibold';
-      elements.enableSensorsBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
-      elements.enableSensorsBtn.querySelector('span').innerText = 'Sensors Connected';
-      showToast('Motion sensors activated');
-    }
-
-    // Touch & Drag Support
-    let isDragging = false;
-    let startAngle = 0;
-
-    elements.steeringWheel.addEventListener('pointerdown', (e) => {
-      isDragging = true;
-      const rect = elements.steeringWheel.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI) - state.currentAngle;
-    });
-
-    window.addEventListener('pointermove', (e) => {
-      if (!isDragging) return;
-      const rect = elements.steeringWheel.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      let angle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI) - startAngle;
-      processAngle(angle);
-    });
-
-    window.addEventListener('pointerup', () => isDragging = false);
-
-    // Event Bindings
-    elements.enableSensorsBtn.addEventListener('click', enableSensors);
-    document.getElementById('zeroCalibrateBtn').addEventListener('click', () => {
-      state.zeroOffset = state.filteredAngle;
-      showToast('Calibrated to Zero Baseline');
-    });
-
-    document.getElementById('toggleAudioBtn').addEventListener('click', () => {
-      state.audioEnabled = !state.audioEnabled;
-      const btnText = document.getElementById('audioStatusText');
-      const icon = document.getElementById('audioIcon');
-      if (state.audioEnabled) {
-        btn
-
+      function initTicks() {
+        const canvas = document.getElementById
+        
