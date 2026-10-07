@@ -1,0 +1,1134 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pace Note Protractor - Rally Recce</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            rally: {
+              bg: '#0b1120',
+              card: '#131e32',
+              border: '#1e2d4a',
+              accent: '#2563eb',
+              accentHover: '#1d4ed8',
+              green: '#10b981',
+              yellow: '#f59e0b',
+              orange: '#f97316',
+              red: '#ef4444'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .dial-glow {
+      box-shadow: 0 0 35px rgba(37, 99, 235, 0.15), inset 0 0 25px rgba(0, 0, 0, 0.6);
+    }
+
+    .grade-box-glow-green {
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+    }
+    .grade-box-glow-yellow {
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+    }
+    .grade-box-glow-orange {
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.2);
+    }
+    .grade-box-glow-red {
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.25);
+    }
+
+    /* Custom range slider styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      margin-top: -6px;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 8px;
+      cursor: pointer;
+      background: #1e2d4a;
+      border-radius: 4px;
+    }
+
+    /* Smooth transition for wheel gauge */
+    .wheel-rotation {
+      will-change: transform;
+      transition: transform 0.05s linear;
+    }
+
+    /* Hide scrollbars for clean display */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col justify-between overflow-x-hidden bg-[#0b1120] text-slate-100 select-none">
+
+  <!-- Top Navigation Header -->
+  <header class="w-full px-4 py-3 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md flex justify-between items-center z-10 shrink-0">
+    <div class="flex items-center space-x-2">
+      <i class="fa-solid fa-gauge-high text-blue-500 text-xl"></i>
+      <h1 class="font-bold tracking-wider uppercase text-sm sm:text-base text-slate-200">
+        Pace Note Protractor
+      </h1>
+    </div>
+    
+    <div class="flex items-center space-x-2">
+      <button id="systemToggleBtn" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-500 text-blue-400 transition-colors">
+        System: <span id="systemNameLabel">1 - 6</span>
+      </button>
+      <button id="sensorDiagBtn" class="p-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-500 text-slate-300 transition-colors" title="Sensor Diagnostics">
+        <i class="fa-solid fa-microchip"></i>
+      </button>
+      <button id="settingsBtn" class="p-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-500 text-slate-300 transition-colors" title="Settings">
+        <i class="fa-solid fa-gear"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Live Sensor Diagnostics Overlay (Collapsible) -->
+  <div id="diagHUD" class="hidden w-full bg-slate-900/95 border-b border-blue-500/30 px-4 py-2 text-xs font-mono text-slate-300 shrink-0 z-20">
+    <div class="flex justify-between items-center mb-1">
+      <span class="text-blue-400 font-bold uppercase"><i class="fa-solid fa-bug mr-1"></i>Sensor Hardware Diagnostics</span>
+      <span id="diagStatus" class="text-yellow-400 font-semibold">Status: Idle</span>
+    </div>
+    <div class="grid grid-cols-3 gap-2 text-[11px] text-slate-400">
+      <div>Acc X: <span id="diagX" class="text-white font-bold">0.00</span></div>
+      <div>Acc Y: <span id="diagY" class="text-white font-bold">0.00</span></div>
+      <div>Acc Z: <span id="diagZ" class="text-white font-bold">0.00</span></div>
+      <div>Gamma: <span id="diagGamma" class="text-white font-bold">0.0°</span></div>
+      <div>Beta: <span id="diagBeta" class="text-white font-bold">0.0°</span></div>
+      <div>Source: <span id="diagSource" class="text-emerald-400 font-bold">None</span></div>
+    </div>
+    <div id="diagMessage" class="text-[10px] text-slate-400 mt-1 italic">
+      Tip: If values stay 0.00 on phone, ensure page is served over HTTPS and motion permissions are allowed.
+    </div>
+  </div>
+
+  <!-- Main Display Canvas & Controls -->
+  <main class="flex-1 flex flex-col items-center justify-between px-4 py-3 max-w-md w-full mx-auto space-y-4">
+
+    <!-- Dial / Steering Wheel Container -->
+    <div class="relative w-full aspect-square max-w-[310px] sm:max-w-[340px] flex items-center justify-center my-auto">
+      
+      <!-- Center Red Notch Indicator at Top -->
+      <div class="absolute -top-1 z-20 w-1.5 h-6 bg-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+
+      <!-- Outer Static Ring with Degree Tick Marks -->
+      <div class="absolute inset-0 rounded-full border-[3px] border-slate-800 dial-glow flex items-center justify-center">
+        <!-- Degree Ticks Canvas Overlay -->
+        <canvas id="ticksCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+      </div>
+
+      <!-- Rotating Wheel Dial (Interactive Touch & Motion Target) -->
+      <div id="steeringWheel" class="relative w-[85%] h-[85%] rounded-full border-4 border-slate-700/80 bg-slate-900/90 shadow-2xl flex flex-col items-center justify-center cursor-grab active:cursor-grabbing wheel-rotation touch-none">
+        
+        <!-- Top Indicator Line on Wheel -->
+        <div id="wheelIndicator" class="absolute top-2 w-1.5 h-5 bg-red-500 rounded-full shadow-md"></div>
+
+        <!-- Wheel Spokes Graphic (Subtle SVG Overlay) -->
+        <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-20" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-400"/>
+          <line x1="50" y1="50" x2="10" y2="50" stroke="currentColor" stroke-width="3" class="text-slate-400"/>
+          <line x1="50" y1="50" x2="90" y2="50" stroke="currentColor" stroke-width="3" class="text-slate-400"/>
+          <line x1="50" y1="50" x2="50" y2="90" stroke="currentColor" stroke-width="3" class="text-slate-400"/>
+        </svg>
+
+        <!-- Digital Readout Center -->
+        <div class="z-10 text-center flex flex-col items-center justify-center pointer-events-none">
+          <div class="flex items-baseline space-x-1">
+            <span id="turnDirectionIcon" class="text-2xl text-slate-500 transition-colors">
+              <i class="fa-solid fa-minus"></i>
+            </span>
+            <span id="angleValue" class="text-6xl sm:text-7xl font-extrabold font-mono tracking-tight text-white drop-shadow-md">
+              0
+            </span>
+            <span class="text-3xl font-light text-slate-400">°</span>
+          </div>
+          <div id="directionLabel" class="text-sm font-semibold tracking-widest uppercase text-slate-400 mt-1">
+            CENTER
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Corner Grade Readout Card -->
+    <div id="cornerGradeCard" class="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center transition-all duration-200 grade-box-glow-green shrink-0">
+      <div class="text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1">
+        CORNER GRADE
+      </div>
+      <div id="cornerGradeText" class="text-4xl sm:text-5xl font-black tracking-wide text-emerald-400 drop-shadow-md transition-colors">
+        STRAIGHT
+      </div>
+      <div id="cornerSubText" class="text-xs text-slate-400 mt-1 font-mono">
+        Range: 0° - 15°
+      </div>
+    </div>
+
+    <!-- Primary Control Buttons -->
+    <div class="w-full space-y-2 shrink-0">
+      
+      <!-- Enable Sensors / Motion Button -->
+      <button id="enableSensorsBtn" class="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-900/40 transition-all flex items-center justify-center space-x-2 text-base">
+        <i class="fa-solid fa-mobile-screen-button"></i>
+        <span>Enable Motion Sensors</span>
+      </button>
+
+      <!-- Grid Secondary Actions: Zero & Audio -->
+      <div class="grid grid-cols-2 gap-2">
+        <button id="zeroCalibrateBtn" class="py-3 px-3 bg-slate-800/90 hover:bg-slate-700/90 active:bg-slate-900 border border-slate-700/80 rounded-xl font-semibold text-sm text-slate-200 flex items-center justify-center space-x-2 transition-all">
+          <i class="fa-solid fa-crosshairs text-blue-400"></i>
+          <span>Zero / Calibrate</span>
+        </button>
+
+        <button id="toggleAudioBtn" class="py-3 px-3 bg-slate-800/90 hover:bg-slate-700/90 active:bg-slate-900 border border-slate-700/80 rounded-xl font-semibold text-sm text-slate-200 flex items-center justify-center space-x-2 transition-all">
+          <i id="audioIcon" class="fa-solid fa-volume-xmark text-slate-400"></i>
+          <span id="audioStatusText">Callouts: OFF</span>
+        </button>
+      </div>
+
+      <!-- Recce Log & Manual Simulation Toolbar -->
+      <div class="flex items-center justify-between pt-1">
+        <button id="manualSliderToggle" class="text-xs text-slate-400 hover:text-blue-400 transition-colors flex items-center space-x-1">
+          <i class="fa-solid fa-sliders"></i>
+          <span>Manual Test Bar</span>
+        </button>
+
+        <button id="simRouteBtn" class="text-xs text-slate-400 hover:text-emerald-400 transition-colors flex items-center space-x-1">
+          <i class="fa-solid fa-play"></i>
+          <span>Auto Stage Sim</span>
+        </button>
+
+        <button id="viewLogsBtn" class="text-xs text-slate-400 hover:text-purple-400 transition-colors flex items-center space-x-1">
+          <i class="fa-solid fa-list-check"></i>
+          <span>Recce Log (<span id="logCount">0</span>)</span>
+        </button>
+      </div>
+
+      <!-- Manual Drag Slider (Collapsible) -->
+      <div id="manualSliderContainer" class="hidden bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-2 mt-2">
+        <div class="flex justify-between text-xs text-slate-400">
+          <span>Left 180°</span>
+          <span id="sliderAngleLabel" class="text-blue-400 font-mono">0°</span>
+          <span>Right 180°</span>
+        </div>
+        <input type="range" id="angleSlider" min="-180" max="180" value="0" step="1" class="w-full">
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Settings & Custom Threshold Modal -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar">
+      
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-lg text-white flex items-center space-x-2">
+          <i class="fa-solid fa-sliders text-blue-500"></i>
+          <span>Pace Note Settings</span>
+        </h3>
+        <button id="closeSettingsBtn" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Corner System Selection -->
+      <div class="space-y-2">
+        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pace Note System</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button data-system="1-6" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
+            1 to 6 (UK/FIA)
+          </button>
+          <button data-system="6-1" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
+            6 to 1 (Jemba)
+          </button>
+          <button data-system="descriptive" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
+            Descriptive
+          </button>
+        </div>
+      </div>
+
+      <!-- Sensor Dampening / Filter Sensitivity -->
+      <div class="space-y-2">
+        <div class="flex justify-between items-center text-xs">
+          <label class="font-semibold text-slate-400 uppercase tracking-wider">Gyro Smoothing Filter</label>
+          <span id="smoothingValueLabel" class="text-blue-400 font-mono">Medium (0.15)</span>
+        </div>
+        <input type="range" id="smoothingSlider" min="0.05" max="0.5" step="0.05" value="0.15" class="w-full">
+        <p class="text-[11px] text-slate-500">Higher values respond faster; lower values reduce road vibration noise.</p>
+      </div>
+
+      <!-- Hardware Sensor Engine Selector -->
+      <div class="space-y-2 pt-2 border-t border-slate-800">
+        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sensor Tracking Mode</label>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button id="modeGravityBtn" class="py-2 font-bold rounded-lg border border-blue-500 bg-blue-600/20 text-blue-400">
+            Gravity Vector (Recommended)
+          </button>
+          <button id="modeGyroBtn" class="py-2 font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300">
+            Gyro Orientation
+          </button>
+        </div>
+        <div class="flex items-center justify-between pt-1 text-xs text-slate-300">
+          <span>Invert Steering Direction</span>
+          <input type="checkbox" id="invertSensorCheck" class="w-4 h-4 accent-blue-600 rounded">
+        </div>
+      </div>
+
+      <!-- Custom Angle Range Editor -->
+      <div class="space-y-3 pt-2 border-t border-slate-800">
+        <div class="flex justify-between items-center">
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Grade Steering Thresholds (°)</label>
+          <button id="resetThresholdsBtn" class="text-[11px] text-blue-400 hover:underline">Reset Defaults</button>
+        </div>
+
+        <div id="thresholdsEditor" class="space-y-2 text-xs">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Voice Voice & Speech Settings -->
+      <div class="space-y-2 pt-2 border-t border-slate-800">
+        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Audio Voice Rate</label>
+        <div class="flex items-center space-x-3">
+          <input type="range" id="speechRateSlider" min="0.8" max="1.8" step="0.1" value="1.2" class="flex-1">
+          <span id="speechRateLabel" class="text-xs font-mono text-blue-400 w-10">1.2x</span>
+        </div>
+      </div>
+
+      <button id="saveSettingsBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-md transition-colors mt-4">
+        Done
+      </button>
+
+    </div>
+  </div>
+
+  <!-- Corner Log History Modal -->
+  <div id="logsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[85vh] flex flex-col">
+      
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 shrink-0">
+        <h3 class="font-bold text-lg text-white flex items-center space-x-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i>
+          <span>Recce Corner Log</span>
+        </h3>
+        <button id="closeLogsBtn" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1" id="logListContainer">
+        <p class="text-xs text-slate-500 text-center py-6">No corners logged yet. Turn the wheel on recce!</p>
+      </div>
+
+      <div class="flex space-x-2 shrink-0 pt-2 border-t border-slate-800">
+        <button id="clearLogsBtn" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition-colors">
+          Clear History
+        </button>
+        <button id="exportLogsBtn" class="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl text-xs transition-colors">
+          Copy as Text
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-medium shadow-2xl transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center space-x-2">
+    <i id="toastIcon" class="fa-solid fa-circle-info text-blue-400"></i>
+    <span id="toastMessage">Message</span>
+  </div>
+
+  <script>
+    // --- Application State ---
+    const state = {
+      rawAngle: 0,            // Direct current angle in degrees
+      filteredAngle: 0,       // Smoothed angle
+      zeroOffset: 0,          // Calibration zero offset
+      currentAngle: 0,        // Calibrated angle (filteredAngle - zeroOffset)
+      
+      system: '1-6',          // '1-6', '6-1', 'descriptive'
+      smoothing: 0.15,        // Low-pass filter smoothing coefficient
+      audioEnabled: false,
+      speechRate: 1.2,
+      sensorsActive: false,
+      
+      // Sensor Engine Configurations
+      sensorMode: 'gravity',  // 'gravity' (Accelerometer atan2) or 'gyro' (DeviceOrientation)
+      invertSensor: false,
+      rawX: 0,
+      rawY: 0,
+      rawZ: 0,
+      rawGamma: 0,
+      rawBeta: 0,
+      activeSensorSource: 'None',
+      
+      lastGradeCalled: null,  // Hysteresis tracker for voice
+      lastSpeechTime: 0,
+      
+      // Auto Stage Simulation handle
+      simInterval: null,
+      
+      // Recce Corner Logger State
+      cornerLogs: [],
+      currentActiveCorner: null, // { direction, maxAngle, peakGrade }
+      
+      // Default corner degree thresholds (upper bound in degrees for each grade index)
+      thresholds: {
+        '1-6': [
+          { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', glow: 'grade-box-glow-green', speak: 'Straight' },
+          { name: '6 - FAST', maxDeg: 35, color: '#34d399', glow: 'grade-box-glow-green', speak: '6' },
+          { name: '5 - OPEN', maxDeg: 60, color: '#facc15', glow: 'grade-box-glow-yellow', speak: '5' },
+          { name: '4 - MEDIUM', maxDeg: 95, color: '#fbbf24', glow: 'grade-box-glow-yellow', speak: '4' },
+          { name: '3 - TIGHT', maxDeg: 130, color: '#fb923c', glow: 'grade-box-glow-orange', speak: '3' },
+          { name: '2 - VERY TIGHT', maxDeg: 165, color: '#f87171', glow: 'grade-box-glow-red', speak: '2' },
+          { name: '1 - HAIRPIN', maxDeg: 999, color: '#ef4444', glow: 'grade-box-glow-red', speak: '1' }
+        ],
+        '6-1': [
+          { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', glow: 'grade-box-glow-green', speak: 'Straight' },
+          { name: '1 - FAST', maxDeg: 35, color: '#34d399', glow: 'grade-box-glow-green', speak: '1' },
+          { name: '2 - OPEN', maxDeg: 60, color: '#facc15', glow: 'grade-box-glow-yellow', speak: '2' },
+          { name: '3 - MEDIUM', maxDeg: 95, color: '#fbbf24', glow: 'grade-box-glow-yellow', speak: '3' },
+          { name: '4 - TIGHT', maxDeg: 130, color: '#fb923c', glow: 'grade-box-glow-orange', speak: '4' },
+          { name: '5 - VERY TIGHT', maxDeg: 165, color: '#f87171', glow: 'grade-box-glow-red', speak: '5' },
+          { name: '6 - HAIRPIN', maxDeg: 999, color: '#ef4444', glow: 'grade-box-glow-red', speak: '6' }
+        ],
+        'descriptive': [
+          { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', glow: 'grade-box-glow-green', speak: 'Straight' },
+          { name: 'FAST', maxDeg: 35, color: '#34d399', glow: 'grade-box-glow-green', speak: 'Fast' },
+          { name: 'MEDIUM', maxDeg: 75, color: '#facc15', glow: 'grade-box-glow-yellow', speak: 'Medium' },
+          { name: 'TIGHT', maxDeg: 120, color: '#fb923c', glow: 'grade-box-glow-orange', speak: 'Tight' },
+          { name: 'HAIRPIN', maxDeg: 170, color: '#f87171', glow: 'grade-box-glow-red', speak: 'Hairpin' },
+          { name: 'ACUTE', maxDeg: 999, color: '#ef4444', glow: 'grade-box-glow-red', speak: 'Acute' }
+        ]
+      }
+    };
+
+    // DOM Element Cache
+    const elements = {
+      steeringWheel: document.getElementById('steeringWheel'),
+      angleValue: document.getElementById('angleValue'),
+      directionLabel: document.getElementById('directionLabel'),
+      turnDirectionIcon: document.getElementById('turnDirectionIcon'),
+      cornerGradeCard: document.getElementById('cornerGradeCard'),
+      cornerGradeText: document.getElementById('cornerGradeText'),
+      cornerSubText: document.getElementById('cornerSubText'),
+      enableSensorsBtn: document.getElementById('enableSensorsBtn'),
+      zeroCalibrateBtn: document.getElementById('zeroCalibrateBtn'),
+      toggleAudioBtn: document.getElementById('toggleAudioBtn'),
+      audioIcon: document.getElementById('audioIcon'),
+      audioStatusText: document.getElementById('audioStatusText'),
+      manualSliderToggle: document.getElementById('manualSliderToggle'),
+      manualSliderContainer: document.getElementById('manualSliderContainer'),
+      angleSlider: document.getElementById('angleSlider'),
+      sliderAngleLabel: document.getElementById('sliderAngleLabel'),
+      simRouteBtn: document.getElementById('simRouteBtn'),
+      ticksCanvas: document.getElementById('ticksCanvas'),
+      systemToggleBtn: document.getElementById('systemToggleBtn'),
+      systemNameLabel: document.getElementById('systemNameLabel'),
+      sensorDiagBtn: document.getElementById('sensorDiagBtn'),
+      diagHUD: document.getElementById('diagHUD'),
+      diagStatus: document.getElementById('diagStatus'),
+      diagX: document.getElementById('diagX'),
+      diagY: document.getElementById('diagY'),
+      diagZ: document.getElementById('diagZ'),
+      diagGamma: document.getElementById('diagGamma'),
+      diagBeta: document.getElementById('diagBeta'),
+      diagSource: document.getElementById('diagSource'),
+      diagMessage: document.getElementById('diagMessage'),
+      modeGravityBtn: document.getElementById('modeGravityBtn'),
+      modeGyroBtn: document.getElementById('modeGyroBtn'),
+      invertSensorCheck: document.getElementById('invertSensorCheck'),
+      settingsBtn: document.getElementById('settingsBtn'),
+      settingsModal: document.getElementById('settingsModal'),
+      closeSettingsBtn: document.getElementById('closeSettingsBtn'),
+      saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+      resetThresholdsBtn: document.getElementById('resetThresholdsBtn'),
+      thresholdsEditor: document.getElementById('thresholdsEditor'),
+      smoothingSlider: document.getElementById('smoothingSlider'),
+      smoothingValueLabel: document.getElementById('smoothingValueLabel'),
+      speechRateSlider: document.getElementById('speechRateSlider'),
+      speechRateLabel: document.getElementById('speechRateLabel'),
+      viewLogsBtn: document.getElementById('viewLogsBtn'),
+      logsModal: document.getElementById('logsModal'),
+      closeLogsBtn: document.getElementById('closeLogsBtn'),
+      logListContainer: document.getElementById('logListContainer'),
+      logCount: document.getElementById('logCount'),
+      clearLogsBtn: document.getElementById('clearLogsBtn'),
+      exportLogsBtn: document.getElementById('exportLogsBtn'),
+      toast: document.getElementById('toast'),
+      toastMessage: document.getElementById('toastMessage'),
+      toastIcon: document.getElementById('toastIcon')
+    };
+
+    // --- Motion Sensors / Hardware Accelerometer & Orientation Engine ---
+    
+    // 1. Motion Accelerometer Event Handler (Gravity Vector Level)
+    function handleMotionEvent(event) {
+      if (!state.sensorsActive) return;
+      
+      const acc = event.accelerationIncludingGravity || event.acceleration;
+      if (!acc) return;
+
+      const ax = acc.x || 0;
+      const ay = acc.y || 0;
+      const az = acc.z || 0;
+
+      state.rawX = ax;
+      state.rawY = ay;
+      state.rawZ = az;
+
+      if (state.sensorMode === 'gravity') {
+        state.activeSensorSource = 'Accelerometer (Gravity)';
+        
+        // Calculate tilt angle in degrees using atan2 vector relative to gravity
+        // Phone upright on steering wheel: rotation in X-Y plane
+        let rad = Math.atan2(ax, ay);
+        let deg = rad * (180 / Math.PI);
+
+        if (state.invertSensor) deg = -deg;
+
+        state.rawAngle = deg;
+        updateAngleLoop();
+      }
+
+      updateDiagHUD();
+    }
+
+    // 2. Device Orientation Gyro Event Handler
+    function handleOrientationEvent(event) {
+      if (!state.sensorsActive) return;
+
+      const gamma = event.gamma || 0; // Left-to-right tilt [-90, 90]
+      const beta = event.beta || 0;   // Front-to-back tilt [-180, 180]
+
+      state.rawGamma = gamma;
+      state.rawBeta = beta;
+
+      if (state.sensorMode === 'gyro') {
+        state.activeSensorSource = 'Gyroscope Orientation';
+        
+        let deg = gamma;
+        // Adjust for portrait vs landscape
+        const orientationAngle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+        if (orientationAngle === 90 || orientationAngle === -90) {
+          deg = beta;
+        }
+
+        if (state.invertSensor) deg = -deg;
+
+        state.rawAngle = deg * 1.5; // Scale factor for steering
+        updateAngleLoop();
+      }
+
+      updateDiagHUD();
+    }
+
+    // Diagnostic HUD Updater
+    function updateDiagHUD() {
+      if (elements.diagHUD.classList.contains('hidden')) return;
+
+      elements.diagX.textContent = state.rawX.toFixed(2);
+      elements.diagY.textContent = state.rawY.toFixed(2);
+      elements.diagZ.textContent = state.rawZ.toFixed(2);
+      elements.diagGamma.textContent = `${state.rawGamma.toFixed(1)}°`;
+      elements.diagBeta.textContent = `${state.rawBeta.toFixed(1)}°`;
+      elements.diagSource.textContent = state.activeSensorSource;
+      elements.diagStatus.textContent = state.sensorsActive ? 'Status: Active' : 'Status: Off';
+      elements.diagStatus.className = state.sensorsActive ? 'text-emerald-400 font-semibold' : 'text-yellow-400 font-semibold';
+    }
+
+    // Master Request Sensor Permissions Function
+    async function requestMotionSensors() {
+      let motionGranted = false;
+      let orientationGranted = false;
+
+      // Check iOS 13+ DeviceMotionEvent Permission API
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        try {
+          const res = await DeviceMotionEvent.requestPermission();
+          if (res === 'granted') motionGranted = true;
+        } catch (e) {
+          console.warn('DeviceMotionEvent permission error:', e);
+        }
+      } else if ('DeviceMotionEvent' in window) {
+        motionGranted = true;
+      }
+
+      // Check iOS 13+ DeviceOrientationEvent Permission API
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const res = await DeviceOrientationEvent.requestPermission();
+          if (res === 'granted') orientationGranted = true;
+        } catch (e) {
+          console.warn('DeviceOrientationEvent permission error:', e);
+        }
+      } else if ('DeviceOrientationEvent' in window) {
+        orientationGranted = true;
+      }
+
+      if (motionGranted || orientationGranted) {
+        // Register Event Listeners
+        window.addEventListener('devicemotion', handleMotionEvent, true);
+        window.addEventListener('deviceorientation', handleOrientationEvent, true);
+        window.addEventListener('deviceorientationabsolute', handleOrientationEvent, true);
+
+        state.sensorsActive = true;
+        elements.enableSensorsBtn.className = 'w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/40 transition-all flex items-center justify-center space-x-2 text-base';
+        elements.enableSensorsBtn.querySelector('span').textContent = 'Sensors Active';
+        
+        showToast('Motion sensors activated!', 'fa-circle-check text-emerald-400');
+        updateDiagHUD();
+      } else {
+        showToast('Sensor access denied or restricted in iframe', 'fa-triangle-exclamation text-yellow-400');
+        elements.diagHUD.classList.remove('hidden');
+        elements.diagMessage.textContent = 'Warning: Sensors appear blocked by browser security policy or iframe restrictions.';
+      }
+    }
+
+    // Sensor Diagnostic Toggle Button
+    elements.sensorDiagBtn.addEventListener('click', () => {
+      elements.diagHUD.classList.toggle('hidden');
+      updateDiagHUD();
+    });
+
+    // Sensor Mode Selectors
+    elements.modeGravityBtn.addEventListener('click', () => {
+      state.sensorMode = 'gravity';
+      elements.modeGravityBtn.className = 'py-2 font-bold rounded-lg border border-blue-500 bg-blue-600/20 text-blue-400';
+      elements.modeGyroBtn.className = 'py-2 font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300';
+      showToast('Mode: Gravity Vector Level', 'fa-microchip text-blue-400');
+    });
+
+    elements.modeGyroBtn.addEventListener('click', () => {
+      state.sensorMode = 'gyro';
+      elements.modeGyroBtn.className = 'py-2 font-bold rounded-lg border border-blue-500 bg-blue-600/20 text-blue-400';
+      elements.modeGravityBtn.className = 'py-2 font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300';
+      showToast('Mode: Gyroscope Orientation', 'fa-compass text-blue-400');
+    });
+
+    // Invert Sensor Checkbox
+    elements.invertSensorCheck.addEventListener('change', (e) => {
+      state.invertSensor = e.target.checked;
+      showToast(`Invert direction: ${state.invertSensor ? 'ON' : 'OFF'}`, 'fa-right-left text-blue-400');
+    });
+
+    // --- Core Angle Processing & Low Pass Filtering ---
+    function updateAngleLoop() {
+      // Exponential smoothing filter
+      const diff = state.rawAngle - state.filteredAngle;
+      state.filteredAngle += diff * state.smoothing;
+
+      // Apply Tare Zero Offset
+      let targetAngle = state.filteredAngle - state.zeroOffset;
+
+      // Clamp between -180 and 180 for clean gauge limits
+      if (targetAngle > 180) targetAngle = 180;
+      if (targetAngle < -180) targetAngle = -180;
+
+      state.currentAngle = Math.round(targetAngle);
+      
+      renderUI();
+    }
+
+    // --- Grade Calculation Logic ---
+    function getCurrentGrade(angle) {
+      const absAngle = Math.abs(angle);
+      const list = state.thresholds[state.system];
+      
+      let lowerBound = 0;
+      for (let i = 0; i < list.length; i++) {
+        if (absAngle <= list[i].maxDeg) {
+          return {
+            grade: list[i],
+            index: i,
+            minDeg: lowerBound,
+            maxDeg: list[i].maxDeg === 999 ? 180 : list[i].maxDeg
+          };
+        }
+        lowerBound = list[i].maxDeg;
+      }
+      return { grade: list[list.length - 1], index: list.length - 1, minDeg: lowerBound, maxDeg: 180 };
+    }
+
+    // --- Audio Voice Callout Engine ---
+    function triggerAudioCallout(turnDirection, gradeObj) {
+      if (!state.audioEnabled || !('speechSynthesis' in window)) return;
+
+      const now = Date.now();
+      // Throttle speech calls to prevent overlapping speech
+      if (now - state.lastSpeechTime < 800) return;
+
+      const speakText = gradeObj.speak === 'Straight' ? 'Straight' : `${turnDirection} ${gradeObj.speak}`;
+      
+      // Cancel previous pending speech
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(speakText);
+      utterance.rate = state.speechRate;
+      utterance.pitch = 1.0;
+      
+      state.lastSpeechTime = now;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // --- Recce Logger Engine ---
+    function processCornerLogging(angle, turnDir, gradeObj) {
+      const absDeg = Math.abs(angle);
+
+      if (absDeg > 15) {
+        // Vehicle is turning
+        if (!state.currentActiveCorner) {
+          state.currentActiveCorner = {
+            startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            direction: turnDir,
+            maxAngle: absDeg,
+            peakGrade: gradeObj.name
+          };
+        } else {
+          // Update peak angle and grade
+          if (absDeg > state.currentActiveCorner.maxAngle) {
+            state.currentActiveCorner.maxAngle = absDeg;
+            state.currentActiveCorner.peakGrade = gradeObj.name;
+          }
+        }
+      } else {
+        // Returned to straight -> save active corner if exists
+        if (state.currentActiveCorner) {
+          state.cornerLogs.unshift({ ...state.currentActiveCorner });
+          state.currentActiveCorner = null;
+          
+          // Keep top 50 logs
+          if (state.cornerLogs.length > 50) state.cornerLogs.pop();
+          
+          elements.logCount.textContent = state.cornerLogs.length;
+          renderLogsList();
+        }
+      }
+    }
+
+    // --- Render Complete UI State ---
+    function renderUI() {
+      const angle = state.currentAngle;
+      const absAngle = Math.abs(angle);
+      const isRight = angle > 0;
+      const isLeft = angle < 0;
+      const turnDir = isRight ? 'Right' : (isLeft ? 'Left' : 'Center');
+
+      // 1. Rotate Steering Wheel Graphic
+      elements.steeringWheel.style.transform = `rotate(${angle}deg)`;
+
+      // 2. Angle Text
+      elements.angleValue.textContent = absAngle;
+
+      // 3. Direction Label & Arrow
+      if (angle === 0) {
+        elements.directionLabel.textContent = 'CENTER';
+        elements.directionLabel.className = 'text-sm font-semibold tracking-widest uppercase text-slate-400 mt-1';
+        elements.turnDirectionIcon.innerHTML = '<i class="fa-solid fa-minus"></i>';
+        elements.turnDirectionIcon.className = 'text-2xl text-slate-500';
+      } else {
+        elements.directionLabel.textContent = isRight ? 'RIGHT' : 'LEFT';
+        elements.directionLabel.className = `text-sm font-semibold tracking-widest uppercase ${isRight ? 'text-blue-400' : 'text-purple-400'} mt-1`;
+        elements.turnDirectionIcon.innerHTML = isRight ? '<i class="fa-solid fa-arrow-right-long"></i>' : '<i class="fa-solid fa-arrow-left-long"></i>';
+        elements.turnDirectionIcon.className = `text-2xl ${isRight ? 'text-blue-400' : 'text-purple-400'}`;
+      }
+
+      // 4. Calculate Corner Grade
+      const { grade, minDeg, maxDeg } = getCurrentGrade(angle);
+
+      // 5. Update Corner Grade Card Styling
+      elements.cornerGradeText.textContent = grade.name;
+      elements.cornerGradeText.style.color = grade.color;
+      elements.cornerSubText.textContent = maxDeg === 180 ? `Range: > ${minDeg}°` : `Range: ${minDeg}° - ${maxDeg}°`;
+
+      // Update Card Glow
+      elements.cornerGradeCard.className = `w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center transition-all duration-200 ${grade.glow} shrink-0`;
+
+      // 6. Voice Callout Trigger with Hysteresis
+      const currentGradeKey = `${turnDir}-${grade.name}`;
+      if (currentGradeKey !== state.lastGradeCalled) {
+        state.lastGradeCalled = currentGradeKey;
+        triggerAudioCallout(turnDir, grade);
+      }
+
+      // 7. Process Recce Logger
+      processCornerLogging(angle, turnDir, grade);
+    }
+
+    // --- Direct Manual Steering Wheel Drag Interaction ---
+    let isDragging = false;
+    let startAngle = 0;
+    let initialWheelAngle = 0;
+
+    function getCenterCoordinates() {
+      const rect = elements.steeringWheel.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+    }
+
+    function calculatePointerAngle(e) {
+      const center = getCenterCoordinates();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      
+      const rad = Math.atan2(clientY - center.y, clientX - center.x);
+      return rad * (180 / Math.PI);
+    }
+
+    elements.steeringWheel.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      startAngle = calculatePointerAngle(e);
+      initialWheelAngle = state.currentAngle;
+      elements.steeringWheel.setPointerCapture(e.pointerId);
+    });
+
+    elements.steeringWheel.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const currentPointerAngle = calculatePointerAngle(e);
+      let angleDiff = currentPointerAngle - startAngle;
+
+      // Handle wrapping over -180/180
+      if (angleDiff > 180) angleDiff -= 360;
+      if (angleDiff < -180) angleDiff += 360;
+
+      let newAngle = initialWheelAngle + angleDiff;
+      if (newAngle > 180) newAngle = 180;
+      if (newAngle < -180) newAngle = -180;
+
+      state.rawAngle = newAngle;
+      state.filteredAngle = newAngle;
+      state.zeroOffset = 0;
+      elements.angleSlider.value = Math.round(newAngle);
+      elements.sliderAngleLabel.textContent = `${Math.round(newAngle)}°`;
+      updateAngleLoop();
+    });
+
+    elements.steeringWheel.addEventListener('pointerup', (e) => {
+      isDragging = false;
+      try { elements.steeringWheel.releasePointerCapture(e.pointerId); } catch(err){}
+    });
+
+    // --- Manual Slider Control ---
+    elements.angleSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      state.rawAngle = val;
+      state.filteredAngle = val;
+      state.zeroOffset = 0;
+      elements.sliderAngleLabel.textContent = `${val}°`;
+      updateAngleLoop();
+    });
+
+    // --- Zero / Calibrate Button ---
+    elements.zeroCalibrateBtn.addEventListener('click', () => {
+      state.zeroOffset = state.filteredAngle;
+      showToast('Calibrated to 0° Center', 'fa-crosshairs text-blue-400');
+      updateAngleLoop();
+    });
+
+    // --- Audio Callouts Toggle ---
+    elements.toggleAudioBtn.addEventListener('click', () => {
+      state.audioEnabled = !state.audioEnabled;
+      
+      if (state.audioEnabled) {
+        elements.audioIcon.className = 'fa-solid fa-volume-high text-emerald-400';
+        elements.audioStatusText.textContent = 'Callouts: ON';
+        elements.toggleAudioBtn.classList.add('border-emerald-500/50', 'bg-emerald-950/30');
+        showToast('Audio callouts enabled', 'fa-volume-high text-emerald-400');
+        // Test speech
+        triggerAudioCallout('Right', getCurrentGrade(30).grade);
+      } else {
+        elements.audioIcon.className = 'fa-solid fa-volume-xmark text-slate-400';
+        elements.audioStatusText.textContent = 'Callouts: OFF';
+        elements.toggleAudioBtn.classList.remove('border-emerald-500/50', 'bg-emerald-950/30');
+        window.speechSynthesis && window.speechSynthesis.cancel();
+        showToast('Audio callouts muted', 'fa-volume-xmark text-slate-400');
+      }
+    });
+
+    // --- System Toggle Button ---
+    function setSystem(sysKey) {
+      state.system = sysKey;
+      state.lastGradeCalled = null;
+      
+      const names = {
+        '1-6': '1 - 6 (UK)',
+        '6-1': '6 - 1 (Jemba)',
+        'descriptive': 'Descriptive'
+      };
+      
+      elements.systemNameLabel.textContent = names[sysKey];
+      
+      // Update Settings Modal Buttons
+      document.querySelectorAll('.system-select-btn').forEach(btn => {
+        if (btn.dataset.system === sysKey) {
+          btn.classList.add('border-blue-500', 'bg-blue-600/20', 'text-blue-400');
+        } else {
+          btn.classList.remove('border-blue-500', 'bg-blue-600/20', 'text-blue-400');
+        }
+      });
+
+      renderThresholdsEditor();
+      updateAngleLoop();
+    }
+
+    elements.systemToggleBtn.addEventListener('click', () => {
+      const keys = ['1-6', '6-1', 'descriptive'];
+      const nextIdx = (keys.indexOf(state.system) + 1) % keys.length;
+      setSystem(keys[nextIdx]);
+      showToast(`Pace Note System: ${elements.systemNameLabel.textContent}`, 'fa-sliders text-blue-400');
+    });
+
+    // --- Automatic Recce Stage Simulator ---
+    elements.simRouteBtn.addEventListener('click', () => {
+      if (state.simInterval) {
+        clearInterval(state.simInterval);
+        state.simInterval = null;
+        elements.simRouteBtn.classList.remove('text-emerald-400');
+        elements.simRouteBtn.querySelector('span').textContent = 'Auto Stage Sim';
+        showToast('Simulation stopped', 'fa-stop text-red-400');
+        return;
+      }
+
+      elements.simRouteBtn.classList.add('text-emerald-400');
+      elements.simRouteBtn.querySelector('span').textContent = 'Stop Sim';
+      showToast('Running simulated recce stage...', 'fa-play text-emerald-400');
+
+      // Waypoints array for simulated rally stage sequence (angle in degrees)
+      const stageSequence = [
+        0, 10, 0, -25, -45, -20, 0, 30, 80, 110, 80, 20, 0, 
+        -140, -160, -90, 0, 45, 95, 135, 175, 40, 0
+      ];
+      
+      let step = 0;
+      let currentSimAngle = state.currentAngle;
+
+      state.simInterval = setInterval(() => {
+        const target = stageSequence[step];
+        const delta = target - currentSimAngle;
+
+        if (Math.abs(delta) < 4) {
+          currentSimAngle = target;
+          step = (step + 1) % stageSequence.length;
+        } else {
+          currentSimAngle += Math.sign(delta) * 5;
+        }
+
+        state.rawAngle = currentSimAngle;
+        state.filteredAngle = currentSimAngle;
+        state.zeroOffset = 0;
+        elements.angleSlider.value = Math.round(currentSimAngle);
+        elements.sliderAngleLabel.textContent = `${Math.round(currentSimAngle)}°`;
+        updateAngleLoop();
+      }, 50);
+    });
+
+    // --- Modal Management & Settings Drawer ---
+    elements.manualSliderToggle.addEventListener('click', () => {
+      elements.manualSliderContainer.classList.toggle('hidden');
+    });
+
+    elements.settingsBtn.addEventListener('click', () => {
+      elements.settingsModal.classList.remove('opacity-0', 'pointer-events-none');
+    });
+
+    elements.closeSettingsBtn.addEventListener('click', () => {
+      elements.settingsModal.classList.add('opacity-0', 'pointer-events-none');
+    });
+
+    elements.saveSettingsBtn.addEventListener('click', () => {
+      elements.settingsModal.classList.add('opacity-0', 'pointer-events-none');
+      showToast('Settings updated', 'fa-check text-emerald-400');
+    });
+
+    // Gyro Smoothing Slider
+    elements.smoothingSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      state.smoothing = val;
+      const label = val <= 0.1 ? 'High (0.1)' : (val <= 0.25 ? 'Medium (0.15)' : 'Direct (0.4)');
+      elements.smoothingValueLabel.textContent = `${label}`;
+    });
+
+    // Speech Rate Slider
+    elements.speechRateSlider.addEventListener('input', (e) => {
+      state.speechRate = parseFloat(e.target.value);
+      elements.speechRateLabel.textContent = `${state.speechRate}x`;
+    });
+
+    // Render Threshold Editor inside settings
+    function renderThresholdsEditor() {
+      const list = state.thresholds[state.system];
+      elements.thresholdsEditor.innerHTML = '';
+
+      list.forEach((item, index) => {
+        if (index === list.length - 1) return; // Skip last acute/hairpin max (infinity)
+
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-slate-800/60 p-2 rounded-lg border border-slate-700/50';
+        row.innerHTML = `
+          <span class="font-bold" style="color:${item.color}">${item.name}</span>
+          <div class="flex items-center space-x-2">
+            <span class="text-slate-400">Up to</span>
+            <input type="number" min="5" max="180" value="${item.maxDeg}" data-index="${index}" class="threshold-input w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-center font-mono text-blue-400 font-bold focus:outline-none focus:border-blue-500">
+            <span class="text-slate-400">°</span>
+          </div>
+        `;
+        elements.thresholdsEditor.appendChild(row);
+      });
+
+      // Attach Event Listeners to Threshold Inputs
+      document.querySelectorAll('.threshold-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const idx = parseInt(e.target.dataset.index);
+          const val = Math.max(5, Math.min(180, parseInt(e.target.value) || 10));
+          state.thresholds[state.system][idx].maxDeg = val;
+          updateAngleLoop();
+        });
+      });
+    }
+
+    // System Selection Button Clicks inside Modal
+    document.querySelectorAll('.system-select-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const sys = e.target.closest('button').dataset.system;
+        setSystem(sys);
+      });
+    });
+
+    // Reset Threshold Defaults
+    elements.resetThresholdsBtn.addEventListener('click', () => {
+      // Re-initialize default threshold values
+      state.thresholds['1-6'][0].maxDeg = 15;
+      state.thresholds['1-6'][1].maxDeg = 35;
+      state.thresholds['1-6'][2].maxDeg = 60;
+      state.thresholds['1-6'][3].maxDeg = 95;
+      state.thresholds['1-6'][4].maxDeg = 130;
+      state.thresholds['1-6'][5].maxDeg = 165;
+      
+      renderThresholdsEditor();
+      updateAngleLoop();
+      showToast('Thresholds reset to defaults', 'fa-rotate-left text-blue-400');
+    });
+
+    // --- Recce Corner Log Modal Handlers ---
+    elements.viewLogsBtn.addEventListener('click', () => {
+      renderLogsList();
+      elements.logsModal.classList.remove('opacity-0', 'pointer-events-none');
+    });
+
+    elements.closeLogsBtn.addEventListener('click', () => {
+      elements.logsModal.classList.add('opacity-0', 'pointer-events-none');
+    });
+
+    function renderLogsList() {
+      if (state.cornerLogs.length === 0) {
+        elements.logListContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">No corners logged yet. Turn the wheel on recce!</p>';
+        return;
+      }
+
+      elements.logListContainer.innerHTML = state.cornerLogs.map((log, idx) => `
+        <div class="flex items-center justify-between bg-slate-800/70 border border-slate-700/60 p-2.5 rounded-xl text-xs">
+          <div class="flex items-center space-x-2.5">
+            <span class="font-mono text-slate-500 text-[10px]">#${state.cornerLogs.length - idx}</span>
+            <span class="font-bold ${log.direction === 'Right' ? 'text-blue-400' : 'text-purple-400'}">
+              ${log.direction.toUpperCase()}
+            </span>
+            <span class="font-bold text-white">${log.peakGrade}</span>
+          </div>
+          <div class="flex items-center space-x-3 font-mono text-slate-400">
+            <span>Peak: <strong class="text-slate-200">${log.maxAngle}°</strong></span>
+            <span class="text-[10px] text-slate-500">${log.startTime}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    elements.clearLogsBtn.addEventListener('click', () => {
+      state.cornerLogs = [];
+      elements.logCount.textContent = '0';
+      renderLogsList();
+      showToast('Logs cleared', 'fa-trash text-slate-400');
+    });
+
+    elements.exportLogsBtn.addEventListener('click', () => {
+      if (state.cornerLogs.length === 0) {
+        showToast('No logs to export', 'fa-triangle-exclamation text-yellow-400');
+        return;
+      }
+
+      const formattedText = state.cornerLogs.map((l, i) => `${i + 1}. ${l.direction} ${l.peakGrade} (${l.maxAngle}°) @ ${l.startTime}`).join('\n');
+      
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = formattedText;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      
+      try {
+        document.execCommand('copy');
+        showToast('Corner log copied to clipboard!', 'fa-copy text-purple-400');
+      } catch (err) {
+        showToast('Unable to copy', 'fa-triangle-exclamation text-red-400');
+      }
+      document.body.removeChild(tempTextArea);
+    });
+
+    // --- Initialization On Load ---
+    window.addEventListener('load', () => {
+      drawDialTicks();
+      setSystem('1-6');
+      renderUI();
+
+      elements.enableSensorsBtn.addEventListener('click', requestMotionSensors);
+
+      // Window resize listener for responsive tick marks canvas
+      window.addEventListener('resize', drawDialTicks);
+    });
+
+  </script>
+</body>
+</html>
+```
