@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Pace Note Protractor - Rally Recce v1.6</title>
+  <title>Pace Note Protractor - Rally Recce v1.7</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -255,31 +255,32 @@
 
         cornerLogs: [],
 
+        // Tightened thresholds matching the Easywrite/Classic physical wheel ring angles
         thresholds: {
           '1-6': [
-            { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
-            { name: '6', maxDeg: 35, color: '#34d399', code: '6', speak: '6' },
-            { name: '5', maxDeg: 60, color: '#facc15', code: '5', speak: '5' },
-            { name: '4', maxDeg: 95, color: '#fbbf24', code: '4', speak: '4' },
-            { name: '3', maxDeg: 130, color: '#fb923c', code: '3', speak: '3' },
-            { name: '2', maxDeg: 165, color: '#f87171', code: '2', speak: '2' },
+            { name: 'STRAIGHT', maxDeg: 8, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
+            { name: '6', maxDeg: 25, color: '#34d399', code: '6', speak: '6' },
+            { name: '5', maxDeg: 45, color: '#facc15', code: '5', speak: '5' },
+            { name: '4', maxDeg: 70, color: '#fbbf24', code: '4', speak: '4' },
+            { name: '3', maxDeg: 100, color: '#fb923c', code: '3', speak: '3' },
+            { name: '2', maxDeg: 135, color: '#f87171', code: '2', speak: '2' },
             { name: '1', maxDeg: 999, color: '#ef4444', code: '1', speak: '1' }
           ],
           '6-1': [
-            { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
-            { name: '1', maxDeg: 35, color: '#ef4444', code: '1', speak: '1' },
-            { name: '2', maxDeg: 60, color: '#f87171', code: '2', speak: '2' },
-            { name: '3', maxDeg: 95, color: '#fb923c', code: '3', speak: '3' },
-            { name: '4', maxDeg: 130, color: '#fbbf24', code: '4', speak: '4' },
-            { name: '5', maxDeg: 165, color: '#facc15', code: '5', speak: '5' },
+            { name: 'STRAIGHT', maxDeg: 8, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
+            { name: '1', maxDeg: 25, color: '#ef4444', code: '1', speak: '1' },
+            { name: '2', maxDeg: 45, color: '#f87171', code: '2', speak: '2' },
+            { name: '3', maxDeg: 70, color: '#fb923c', code: '3', speak: '3' },
+            { name: '4', maxDeg: 100, color: '#fbbf24', code: '4', speak: '4' },
+            { name: '5', maxDeg: 135, color: '#facc15', code: '5', speak: '5' },
             { name: '6', maxDeg: 999, color: '#34d399', code: '6', speak: '6' }
           ],
           traditional: [
-            { name: 'STRAIGHT', maxDeg: 15, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
-            { name: 'FAST', maxDeg: 35, color: '#34d399', code: 'FAST', speak: 'Fast' },
-            { name: 'MEDIUM', maxDeg: 60, color: '#facc15', code: 'MEDIUM', speak: 'Medium' },
-            { name: 'EASY', maxDeg: 95, color: '#fbbf24', code: 'EASY', speak: 'Easy' },
-            { name: '90', maxDeg: 130, color: '#fb923c', code: '90', speak: '90' },
+            { name: 'STRAIGHT', maxDeg: 8, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
+            { name: 'FAST', maxDeg: 25, color: '#34d399', code: 'FAST', speak: 'Fast' },
+            { name: 'MEDIUM', maxDeg: 45, color: '#facc15', code: 'MEDIUM', speak: 'Medium' },
+            { name: 'EASY', maxDeg: 70, color: '#fbbf24', code: 'EASY', speak: 'Easy' },
+            { name: '90', maxDeg: 100, color: '#fb923c', code: '90', speak: '90' },
             { name: 'HAIRPIN', maxDeg: 999, color: '#ef4444', code: 'HAIRPIN', speak: 'Hairpin' }
           ]
         }
