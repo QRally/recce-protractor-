@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Pace Note Protractor - Rally Recce v1.7</title>
+  <title>Pace Note Protractor - Rally Recce v1.8</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -176,7 +176,7 @@
             6 to 1 (Jemba)
           </button>
           <button data-system="traditional" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
-            Old School (Medium R)
+            Descriptive
           </button>
         </div>
       </div>
@@ -255,7 +255,6 @@
 
         cornerLogs: [],
 
-        // Tightened thresholds matching the Easywrite/Classic physical wheel ring angles
         thresholds: {
           '1-6': [
             { name: 'STRAIGHT', maxDeg: 8, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
@@ -275,13 +274,17 @@
             { name: '5', maxDeg: 135, color: '#facc15', code: '5', speak: '5' },
             { name: '6', maxDeg: 999, color: '#34d399', code: '6', speak: '6' }
           ],
+          // Updated Descriptive System matching the diagram: ER, FR, FMR, MR, KR, SqR, OpHpR, HpR
           traditional: [
             { name: 'STRAIGHT', maxDeg: 8, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
-            { name: 'FAST', maxDeg: 25, color: '#34d399', code: 'FAST', speak: 'Fast' },
-            { name: 'MEDIUM', maxDeg: 45, color: '#facc15', code: 'MEDIUM', speak: 'Medium' },
-            { name: 'EASY', maxDeg: 70, color: '#fbbf24', code: 'EASY', speak: 'Easy' },
-            { name: '90', maxDeg: 100, color: '#fb923c', code: '90', speak: '90' },
-            { name: 'HAIRPIN', maxDeg: 999, color: '#ef4444', code: 'HAIRPIN', speak: 'Hairpin' }
+            { name: 'E', maxDeg: 20, color: '#34d399', code: 'E', speak: 'Easy' },
+            { name: 'F', maxDeg: 35, color: '#a3e635', code: 'F', speak: 'Fast' },
+            { name: 'FM', maxDeg: 55, color: '#facc15', code: 'FM', speak: 'Fast Medium' },
+            { name: 'M', maxDeg: 75, color: '#fbbf24', code: 'M', speak: 'Medium' },
+            { name: 'K', maxDeg: 90, color: '#fb923c', code: 'K', speak: 'Kink' },
+            { name: 'Sq', maxDeg: 115, color: '#f87171', code: 'Sq', speak: 'Square' },
+            { name: 'OpHp', maxDeg: 145, color: '#ef4444', code: 'OpHp', speak: 'Open Hairpin' },
+            { name: 'Hp', maxDeg: 999, color: '#dc2626', code: 'Hp', speak: 'Hairpin' }
           ]
         }
       };
@@ -403,13 +406,8 @@
         let spokenCallout = '';
 
         if (matchedGrade.code !== 'STRAIGHT') {
-          if (state.system === 'traditional') {
-            cleanGradeDisplay = `${matchedGrade.code} ${dirPrefix}`;
-            spokenCallout = `${matchedGrade.speak} ${isRight ? 'Right' : 'Left'}`;
-          } else {
-            cleanGradeDisplay = `${dirPrefix}${matchedGrade.code}`;
-            spokenCallout = `${isRight ? 'Right' : 'Left'} ${matchedGrade.speak}`;
-          }
+          cleanGradeDisplay = `${matchedGrade.code}${dirPrefix}`;
+          spokenCallout = `${matchedGrade.speak} ${isRight ? 'Right' : 'Left'}`;
         }
 
         if (elements.gradeLabel) {
@@ -582,9 +580,9 @@
           const sys = state.system === '1-6' ? '6-1' : state.system === '6-1' ? 'traditional' : '1-6';
           state.system = sys;
           if (elements.systemNameLabel) {
-            elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Old School';
+            elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Descriptive';
           }
-          showToast(`System: ${sys === 'traditional' ? 'Old School' : sys.toUpperCase()}`);
+          showToast(`System: ${sys === 'traditional' ? 'Descriptive' : sys.toUpperCase()}`);
           updateUI();
         });
       }
@@ -595,9 +593,9 @@
           if (sys) {
             state.system = sys;
             if (elements.systemNameLabel) {
-              elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Old School';
+              elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Descriptive';
             }
-            showToast(`System: ${sys === 'traditional' ? 'Old School' : sys.toUpperCase()}`);
+            showToast(`System: ${sys === 'traditional' ? 'Descriptive' : sys.toUpperCase()}`);
             updateUI();
           }
         });
