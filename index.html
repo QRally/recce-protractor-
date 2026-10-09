@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Pace Note Protractor - Rally Recce v2.0</title>
+  <title>Pace Note Protractor - Rally Recce v2.2</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -173,15 +173,18 @@
 
       <div class="space-y-2">
         <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pace Note System</label>
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-2 gap-2">
           <button data-system="1-6" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
             1 to 6 (UK/FIA)
           </button>
-          <button data-system="6-1" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
-            6 to 1 (Jemba)
+          <button data-system="jemba" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
+            Jemba (6 to 1)
           </button>
           <button data-system="traditional" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
             Descriptive
+          </button>
+          <button data-system="clockface" class="system-select-btn py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500">
+            Clockface (No R/L)
           </button>
         </div>
       </div>
@@ -280,7 +283,7 @@
             { name: '2', maxDeg: 135, color: '#f87171', code: '2', speak: '2' },
             { name: '1', maxDeg: 999, color: '#ef4444', code: '1', speak: '1' }
           ],
-          '6-1': [
+          jemba: [
             { name: 'STRAIGHT', maxDeg: 8, color: '#10b981', code: 'STRAIGHT', speak: 'Straight' },
             { name: '1', maxDeg: 25, color: '#ef4444', code: '1', speak: '1' },
             { name: '2', maxDeg: 45, color: '#f87171', code: '2', speak: '2' },
@@ -299,6 +302,14 @@
             { name: 'Sq', maxDeg: 115, color: '#f87171', code: 'Sq', speak: 'Square' },
             { name: 'OpHp', maxDeg: 145, color: '#ef4444', code: 'OpHp', speak: 'Open Hairpin' },
             { name: 'Hp', maxDeg: 999, color: '#dc2626', code: 'Hp', speak: 'Hairpin' }
+          ],
+          clockface: [
+            { name: 'STRAIGHT', maxDeg: 8, color: '#10b981', rightCode: '12', leftCode: '12', speakRight: 'Straight', speakLeft: 'Straight' },
+            { name: '1', maxDeg: 35, color: '#34d399', rightCode: "1", leftCode: "11", speakRight: "1", speakLeft: "11" },
+            { name: '2', maxDeg: 65, color: '#facc15', rightCode: "2", leftCode: "10", speakRight: "2", speakLeft: "10" },
+            { name: '3', maxDeg: 105, color: '#fbbf24', rightCode: "3", leftCode: "9", speakRight: "3", speakLeft: "9" },
+            { name: '4', maxDeg: 140, color: '#fb923c', rightCode: "4", leftCode: "8", speakRight: "4", speakLeft: "8" },
+            { name: '5', maxDeg: 999, color: '#ef4444', rightCode: "5", leftCode: "7", speakRight: "5", speakLeft: "7" }
           ]
         }
       };
@@ -319,6 +330,14 @@
       };
 
       const synth = window.speechSynthesis;
+
+      function getSystemDisplayName(sys) {
+        if (sys === '1-6') return '1 - 6';
+        if (sys === 'jemba') return 'Jemba';
+        if (sys === 'traditional') return 'Descriptive';
+        if (sys === 'clockface') return 'Clockface';
+        return sys.toUpperCase();
+      }
 
       function initTicks() {
         const canvas = document.getElementById('ticksCanvas');
@@ -419,9 +438,16 @@
         let cleanGradeDisplay = 'STRAIGHT';
         let spokenCallout = '';
 
-        if (matchedGrade.code !== 'STRAIGHT') {
-          cleanGradeDisplay = `${matchedGrade.code}${dirPrefix}`;
-          spokenCallout = `${matchedGrade.speak} ${isRight ? 'Right' : 'Left'}`;
+        if (state.system === 'clockface') {
+          if (absAngle > 8) {
+            cleanGradeDisplay = isRight ? matchedGrade.rightCode : matchedGrade.leftCode;
+            spokenCallout = isRight ? matchedGrade.speakRight : matchedGrade.speakLeft;
+          }
+        } else {
+          if (matchedGrade.code !== 'STRAIGHT') {
+            cleanGradeDisplay = `${matchedGrade.code}${dirPrefix}`;
+            spokenCallout = `${matchedGrade.speak} ${isRight ? 'Right' : 'Left'}`;
+          }
         }
 
         if (elements.gradeLabel) {
@@ -591,12 +617,14 @@
       const sysToggle = document.getElementById('systemToggleBtn');
       if (sysToggle) {
         sysToggle.addEventListener('click', () => {
-          const sys = state.system === '1-6' ? '6-1' : state.system === '6-1' ? 'traditional' : '1-6';
-          state.system = sys;
+          const order = ['1-6', 'jemba', 'traditional', 'clockface'];
+          const nextIndex = (order.indexOf(state.system) + 1) % order.length;
+          state.system = order[nextIndex];
+          const disp = getSystemDisplayName(state.system);
           if (elements.systemNameLabel) {
-            elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Descriptive';
+            elements.systemNameLabel.innerText = disp;
           }
-          showToast(`System: ${sys === 'traditional' ? 'Descriptive' : sys.toUpperCase()}`);
+          showToast(`System: ${disp}`);
           updateUI();
         });
       }
@@ -606,10 +634,11 @@
           const sys = e.target.getAttribute('data-system');
           if (sys) {
             state.system = sys;
+            const disp = getSystemDisplayName(sys);
             if (elements.systemNameLabel) {
-              elements.systemNameLabel.innerText = sys === '1-6' ? '1 - 6' : sys === '6-1' ? '6 - 1' : 'Descriptive';
+              elements.systemNameLabel.innerText = disp;
             }
-            showToast(`System: ${sys === 'traditional' ? 'Descriptive' : sys.toUpperCase()}`);
+            showToast(`System: ${disp}`);
             updateUI();
           }
         });
